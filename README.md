@@ -145,10 +145,6 @@ python -m app
 
 <div align="center">
 
-### 📌 Mini descripción / Pie de proyecto
-
-> **StockDepo** — *Sistema web local y gratuito para gestión de depósito, armado por recetas (BOM), despacho multicanal, previsión de stock y lectura de planillas manuscritas con IA (Python · FastAPI · SQLite · Gemini Vision).*
-
 Desarrollado para **Enfocados Mendoza** · Hecho para funcionar rápido, local y sin depender de la nube.
 
 </div>
