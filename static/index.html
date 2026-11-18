@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StockDepo – Enfocados Mendoza</title>
+<link rel="stylesheet" href="/static/estilos.css">
+<link rel="icon" type="image/webp" href="/static/logo_on.webp">
+</head>
+<body>
+<!-- Pantalla de arranque Neón LED (3.5 s, clic para saltar) -->
+<div id="splashNeon" class="splash-neon" onclick="cerrarSplashNeon(true)" title="Tocá para entrar directo">
+  <div class="splash-card">
+    <div class="splash-logo-wrap" id="splashLogoWrap">
+      <img src="/static/logo_off.webp" alt="Enfocados Mendoza apagado" class="splash-img splash-off" draggable="false">
+      <img src="/static/logo_on.webp" alt="Enfocados Mendoza neón" id="splashImgOn" class="splash-img splash-on" draggable="false">
+      <div id="splashLaser" class="splash-laser"></div>
+    </div>
+    <div class="splash-status">
+      <span id="splashTexto" class="splash-txt">CARGANDO...</span>
+      <span id="splashPct" class="splash-pct">0%</span>
+    </div>
+    <div class="splash-bar-track">
+      <div id="splashBarFill" class="splash-bar-fill"></div>
+    </div>
+    <div class="splash-hint">Enfocados Mendoza · StockDepo · tocá para saltar</div>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand" onclick="reproducirSplashNeon()" title="Ver animación Neón LED de inicio" style="cursor:pointer">
+      <img src="/static/logo_on.webp" alt="Enfocados Mendoza" class="brand-logo-img">
+      <div><div class="bold">StockDepo</div><div class="xs muted">Enfocados Mendoza · ✨ Neón</div></div>
+    </div>
+    <div id="sideNav"></div>
+    <div class="sidebar-foot xs muted">
+      <div>v0.7 · Enfocados Mendoza</div>
+      <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="link xs" onclick="reproducirSplashNeon()">✨ Ver intro Neón</button>
+        <span>·</span>
+        <a href="/static/logo_cargando.gif" download="Enfocados_Mendoza_Neon_Cargando.gif" class="link xs" style="text-decoration:none">⬇️ Descargar GIF</a>
+      </div>
+    </div>
+  </aside>
+  <main>
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <img src="/static/logo_on.webp" alt="Logo" class="topbar-logo-m" onclick="reproducirSplashNeon()" title="Ver animación Neón LED">
+        <h1 id="titulo">Stock</h1>
+      </div>
+      <div class="topbar-right">
+        <select id="usuario" class="inp auto small" title="¿Quién está usando la app?"></select>
+        <button class="bell" title="Avisos" onclick="ir('avisos')">🔔<span id="bellCount" class="bell-count hidden"></span></button>
+      </div>
+    </header>
+    <div id="contenido" class="content"></div>
+  </main>
+</div>
+<nav id="bottomNav" class="bottom-nav"></nav>
+<div id="toast" class="toast card hidden"></div>
+
+<dialog id="dlg"></dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

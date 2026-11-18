@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StockDepo – Enfocados Mendoza (Mockup v0.2)</title>
+<script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+<style>
+  .nav-btn.active{background:var(--primary);color:var(--primary-foreground)}
+  .b-ok{background:rgba(34,197,94,.15);color:rgb(22,163,74)}
+  .b-low{background:rgba(234,179,8,.2);color:rgb(180,120,0)}
+  .b-crit{background:rgba(239,68,68,.15);color:rgb(220,38,38)}
+  .bar-ok{background:rgb(34,197,94)} .bar-low{background:rgb(234,179,8)} .bar-crit{background:rgb(239,68,68)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px}
+  .inp{background:var(--background);border:1px solid var(--border);border-radius:10px;padding:8px 10px;width:100%;color:var(--foreground)}
+  .btn{background:var(--primary);color:var(--primary-foreground);border-radius:10px;padding:8px 14px;font-weight:600}
+  .btn2{background:var(--secondary);color:var(--secondary-foreground);border-radius:10px;padding:6px 12px}
+  .tgl{width:42px;height:24px;border-radius:999px;background:var(--border);position:relative;transition:.2s;flex-shrink:0}
+  .tgl::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:white;transition:.2s}
+  .tgl.on{background:var(--primary)} .tgl.on::after{left:21px}
+  .muted{color:var(--muted-foreground)}
+  .chip{border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:14px}
+  .chip.on{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+  @keyframes spin{to{transform:rotate(360deg)}} .spin{animation:spin 1s linear infinite;display:inline-block}
+</style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased">
+<div class="flex min-h-screen">
+  <aside class="hidden md:flex w-60 flex-col gap-1 p-4 border-r border-[var(--border)] bg-[var(--sidebar)]">
+    <div class="flex items-center gap-2 mb-6 px-2">
+      <div class="w-9 h-9 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] grid place-items-center text-lg">📦</div>
+      <div><div class="font-bold leading-tight">StockDepo</div><div class="text-xs muted">Enfocados Mendoza · local</div></div>
+    </div>
+    <div id="sideNav" class="flex flex-col gap-1"></div>
+    <div class="mt-auto text-xs muted px-2">Mockup v0.2 · stock de ejemplo</div>
+  </aside>
+
+  <main class="flex-1 min-w-0 pb-24 md:pb-6">
+    <header class="flex items-center justify-between gap-3 px-4 md:px-8 py-4 border-b border-[var(--border)]">
+      <h1 id="title" class="text-xl font-bold">Panel</h1>
+      <div class="flex items-center gap-3">
+        <select id="user" class="inp !w-auto text-sm" onchange="S.user=this.value">
+          <option>Yo</option><option>Jefe 1</option><option>Jefe 2</option>
+        </select>
+        <button onclick="go('avisos')" class="relative text-xl" title="Avisos">🔔
+          <span id="bellCount" class="absolute -top-1 -right-2 text-xs bg-red-500 text-white rounded-full px-1.5 font-bold"></span>
+        </button>
+      </div>
+    </header>
+    <div id="content" class="p-4 md:p-8"></div>
+  </main>
+</div>
+<nav id="bottomNav" class="md:hidden fixed bottom-0 inset-x-0 flex justify-around border-t border-[var(--border)] bg-[var(--sidebar)] py-2 z-10"></nav>
+<div id="toast" class="fixed bottom-24 md:bottom-6 right-4 hidden card px-4 py-3 shadow-lg text-sm z-20"></div>
+
+<script>
+const VIEWS=[['panel','🏠','Panel'],['stock','📋','Stock'],['despacho','🚚','Despacho'],['planilla','📸','Planilla'],['ingreso','📥','Ingreso'],['avisos','🔔','Avisos'],['chat','💬','Asistente']];
+const CANALES=['Local','Revendedor','Mercado Libre','Tienda Nube'];
+const ENVIOS=['Terminal de ómnibus','Andreani','Retira en local'];
+const CIC={'Local':'🏪','Revendedor':'🤝','Mercado Libre':'🟡','Tienda Nube':'🛍️'};
+const now=()=>new Date();
+const ago=m=>new Date(Date.now()-m*60000);
+const S={
+  view:'panel',user:'Yo',filter:'todos',q:'',sort:'custom',open:{},
+  items:[
+    {id:1,name:'Estuche para copas',type:'producto',unit:'u',stock:12,min:6,crit:3,prov:''},
+    {id:2,name:'Estuche Asador',type:'producto',unit:'u',stock:9,min:6,crit:3,prov:''},
+    {id:3,name:'Estuche Asador con Cubiertos Premium',type:'producto',unit:'u',stock:4,min:5,crit:2,prov:''},
+    {id:4,name:'Estuche Coctelero',type:'producto',unit:'u',stock:7,min:4,crit:2,prov:''},
+    {id:5,name:'Mochila Campestre Térmica',type:'producto',unit:'u',stock:2,min:4,crit:2,prov:''},
+    {id:6,name:'Estuche Fernetero',type:'producto',unit:'u',stock:15,min:6,crit:3,prov:''},
+    {id:7,name:'Estuche Fernetero Doble',type:'producto',unit:'u',stock:8,min:4,crit:2,prov:''},
+    {id:8,name:'Estuche Familiar (2 Personas)',type:'producto',unit:'u',stock:6,min:4,crit:2,prov:''},
+    {id:9,name:'Estuche Familiar (4 Personas)',type:'producto',unit:'u',stock:5,min:3,crit:1,prov:''},
+    {id:10,name:'Tabla de Algarrobo Artesanal con Manijas',type:'producto',unit:'u',stock:10,min:5,crit:2,prov:''},
+    {id:11,name:'Cinta de embalaje',type:'insumo',unit:'rollos',stock:5,min:4,crit:2,prov:'Embalajes Norte'},
+    {id:12,name:'Film negro de embalaje',type:'insumo',unit:'rollos',stock:1,min:2,crit:1,prov:'Embalajes Norte'},
+    {id:13,name:'Rollo de burbujas',type:'insumo',unit:'rollos',stock:2,min:2,crit:1,prov:''},
+    {id:14,name:'Caja chica',type:'insumo',unit:'u',stock:34,min:20,crit:10,prov:'Cartonera Oeste'},
+    {id:15,name:'Caja mediana',type:'insumo',unit:'u',stock:12,min:15,crit:6,prov:'Cartonera Oeste'},
+    {id:16,name:'Caja grande',type:'insumo',unit:'u',stock:8,min:5,crit:2,prov:'Cartonera Oeste'},
+  ],
+  order:[],
+  movs:[],
+  dispatches:[
+    {n:14,canal:'Mercado Libre',envio:'',cli:'#ML-2231',t:ago(35),items:[['Estuche Fernetero',1],['Caja chica',1]]},
+    {n:13,canal:'Revendedor',envio:'Terminal de ómnibus',cli:'Carlos (San Rafael)',t:ago(90),items:[['Estuche Asador',3],['Estuche Coctelero',2],['Caja grande',1]]},
+    {n:12,canal:'Local',envio:'',cli:'',t:ago(150),items:[['Tabla de Algarrobo Artesanal con Manijas',1]]},
+    {n:11,canal:'Revendedor',envio:'Andreani',cli:'Laura (Neuquén)',t:ago(1500),items:[['Estuche para copas',4],['Caja mediana',2]]},
+    {n:10,canal:'Tienda Nube',envio:'',cli:'#TN-508',t:ago(1600),items:[['Estuche Familiar (2 Personas)',1],['Caja mediana',1]]},
+    {n:9,canal:'Mercado Libre',envio:'',cli:'#ML-2210',t:ago(2900),items:[['Mochila Campestre Térmica',1],['Caja grande',1]]},
+  ],
+  notifs:[
+    {t:ago(200),type:'crit',msg:'Film negro de embalaje llegó a nivel CRÍTICO (1 rollo).',read:false,mail:true},
+    {t:ago(35),type:'desp',msg:'Despacho #14 (Mercado Libre) cargado por Yo: −1 Estuche Fernetero, −1 Caja chica.',read:false,mail:false},
+    {t:ago(1440),type:'low',msg:'Mochila Campestre Térmica está BAJO (2 u, mínimo 4).',read:true,mail:true},
+    {t:ago(4320),type:'week',msg:'Resumen semanal enviado a 2 destinatarios.',read:true,mail:true},
+  ],
+  cfg:{
+    app:{on:true,desp:true,low:true,crit:true,photo:true},
+    mail:{on:true,from:'enfocadosmendoza@gmail.com',desp:false,low:true,crit:true,week:true,day:'Lunes',hour:'09:00',emails:['jefe1@gmail.com','jefe2@gmail.com']}
+  },
+  chat:[{from:'bot',text:'¡Hola! Preguntame lo que quieras del stock. Ej: "¿cuántos estuches fernetero hay?", "¿qué falta comprar?", "¿cuántas cajas quedan?"'}],
+  lines:[],photo:null,photoStep:0,photoRows:[]
+};
+S.order=S.items.map(i=>i.id);
+let nextDisp=15;
+
+const st=i=>i.stock<=i.crit?'crit':i.stock<=i.min?'low':'ok';
+const stLabel={ok:'OK',low:'Bajo',crit:'Crítico'};
+const fmtT=d=>{const m=Math.round((Date.now()-d)/60000);if(m<1)return'recién';if(m<60)return`hace ${m} min`;if(m<1440)return`hace ${Math.round(m/60)} h`;return`hace ${Math.round(m/1440)} d`};
+const fmtD=d=>d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+const byName=n=>S.items.find(i=>i.name===n);
+const byId=id=>S.items.find(i=>i.id==id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const badge=s=>`<span class="b-${s} text-xs font-semibold px-2 py-0.5 rounded-full">${stLabel[s]}</span>`;
+
+function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.remove('hidden');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.add('hidden'),3000)}
+function notify(type,msg){
+  const a=S.cfg.app,m=S.cfg.mail;
+  const inApp=a.on&&a[type]!==false;const byMail=m.on&&!!m[type];
+  if(inApp||byMail)S.notifs.unshift({t:now(),type,msg,read:!inApp,mail:byMail});
+}
+function changeStock(item,delta,motivo){
+  const before=st(item);item.stock=Math.max(0,item.stock+delta);const after=st(item);
+  S.movs.unshift({t:now(),user:S.user,item:item.name,d:delta,motivo});
+  if(after!==before){
+    if(after==='crit')notify('crit',`${item.name} llegó a nivel CRÍTICO (${item.stock} ${item.unit}).`);
+    else if(after==='low')notify('low',`${item.name} está BAJO (${item.stock} ${item.unit}, mínimo ${item.min}).`);
+  }
+}
+function registerDispatch(d){ // d={canal,envio,cli,items:[[name,q]],origen}
+  const ref=`Despacho #${nextDisp} · ${d.canal}${d.envio?' ('+d.envio+')':''}${d.cli?' · '+d.cli:''}`;
+  d.items.forEach(([n,q])=>changeStock(byName(n),-q,ref));
+  S.dispatches.unshift({n:nextDisp,canal:d.canal,envio:d.envio||'',cli:d.cli||'',t:now(),items:d.items});
+  notify('desp',`Despacho #${nextDisp} (${d.canal}${d.envio?' · '+d.envio:''}) cargado por ${S.user}${d.origen?' '+d.origen:''}: ${d.items.map(([n,q])=>`−${q} ${n}`).join(', ')}.`);
+  nextDisp++;
+}
+
+/* ---------- NAV ---------- */
+function go(v){S.view=v;render()}
+function renderNav(){
+  document.getElementById('sideNav').innerHTML=VIEWS.map(([k,ic,l])=>`<button onclick="go('${k}')" class="nav-btn ${S.view===k?'active':''} flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-[var(--accent)]"><span>${ic}</span>${l}${k==='planilla'?'<span class="ml-auto text-xs b-low px-1.5 rounded">IA</span>':''}</button>`).join('');
+  document.getElementById('bottomNav').innerHTML=VIEWS.map(([k,ic,l])=>`<button onclick="go('${k}')" class="flex flex-col items-center text-xs px-0.5 ${S.view===k?'font-bold text-[var(--primary)]':'muted'}"><span class="text-lg">${ic}</span>${l}</button>`).join('');
+  const un=S.notifs.filter(n=>!n.read).length;const b=document.getElementById('bellCount');b.textContent=un||'';b.style.display=un?'':'none';
+  document.getElementById('title').textContent=VIEWS.find(v=>v[0]===S.view)[2];
+}
+
+/* ---------- PANEL ---------- */
+function vPanel(){
+  const low=S.items.filter(i=>st(i)!=='ok').sort((a,b)=>(st(a)==='crit'?0:1)-(st(b)==='crit'?0:1));
+  const today=S.dispatches.filter(d=>Date.now()-d.t<86400000).length;
+  const week=S.dispatches.filter(d=>Date.now()-d.t<7*86400000);
+  const kpi=(l,v,ic,cls='')=>`<div class="card p-4"><div class="text-sm muted">${ic} ${l}</div><div class="text-3xl font-bold mt-1 ${cls}">${v}</div></div>`;
+  const prodUnits=d=>d.items.filter(([n])=>byName(n).type==='producto').reduce((a,[,q])=>a+q,0);
+  return `
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    ${kpi('Artículos',S.items.length,'📦')}
+    ${kpi('Stock bajo',S.items.filter(i=>st(i)==='low').length,'⚠️','text-yellow-500')}
+    ${kpi('Críticos',S.items.filter(i=>st(i)==='crit').length,'🛑','text-red-500')}
+    ${kpi('Despachos hoy',today,'🚚')}
+  </div>
+  <div class="grid lg:grid-cols-2 gap-4">
+    <div class="card p-5">
+      <div class="flex justify-between items-center mb-3"><h2 class="font-semibold">Requiere atención</h2><button class="text-sm text-[var(--primary)]" onclick="go('stock')">Ver stock →</button></div>
+      ${low.length?low.map(i=>`<div class="flex items-center justify-between py-2.5 border-b border-[var(--border)] last:border-0 gap-2">
+        <div class="min-w-0"><div class="font-medium truncate">${i.name}</div><div class="text-xs muted">${i.type==='insumo'?'Insumo':'Producto'} · quedan <b>${i.stock} ${i.unit}</b> (mín. ${i.min})${i.prov?' · '+esc(i.prov):''}</div></div>
+        <div class="flex items-center gap-2 shrink-0">${badge(st(i))}<button class="btn2 text-xs" onclick="S.preIng=${i.id};go('ingreso')">+ Ingreso</button></div></div>`).join(''):'<p class="muted text-sm">Todo en orden 🎉</p>'}
+    </div>
+    <div class="card p-5">
+      <h2 class="font-semibold mb-1">Pedidos por canal</h2><p class="text-xs muted mb-3">Últimos 7 días · tocá un canal para ver sus pedidos</p>
+      ${CANALES.map(c=>{const ds=week.filter(d=>d.canal===c);const open=S.open[c];
+        return `<div class="border border-[var(--border)] rounded-xl mb-2 overflow-hidden">
+        <button class="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--accent)]" onclick="S.open['${c}']=!S.open['${c}'];render()">
+          <span class="flex items-center gap-2 font-medium">${CIC[c]} Pedidos de ${c}</span>
+          <span class="flex items-center gap-3 text-sm"><span class="muted">${ds.reduce((a,d)=>a+prodUnits(d),0)} u</span><span class="btn2 text-xs !py-0.5">${ds.length}</span><span class="muted">${open?'▲':'▼'}</span></span>
+        </button>
+        ${open?`<div class="px-4 pb-3">${ds.length?`<table class="w-full text-sm"><thead class="muted text-left text-xs"><tr><th class="py-1">Pedido</th><th>Productos</th><th class="text-right">Fecha</th></tr></thead><tbody>
+          ${ds.map(d=>`<tr class="border-t border-[var(--border)] align-top"><td class="py-2 pr-2 whitespace-nowrap"><b>#${d.n}</b>${d.cli?`<div class="text-xs muted">${esc(d.cli)}</div>`:''}${d.envio?`<div class="text-xs b-ok inline-block px-1.5 rounded mt-0.5">${d.envio}</div>`:''}</td>
+          <td class="py-2 pr-2">${d.items.filter(([n])=>byName(n).type==='producto').map(([n,q])=>`<div><b>${q}×</b> ${n}</div>`).join('')||'<span class="muted">solo insumos</span>'}</td>
+          <td class="py-2 text-right muted whitespace-nowrap">${fmtD(d.t)}</td></tr>`).join('')}</tbody></table>`:'<p class="text-sm muted py-2">Sin pedidos esta semana.</p>'}</div>`:''}
+        </div>`}).join('')}
+    </div>
+  </div>`;
+}
+
+/* ---------- STOCK ---------- */
+function sortedItems(){
+  const arr=S.items.slice();
+  const f={custom:(a,b)=>S.order.indexOf(a.id)-S.order.indexOf(b.id),name:(a,b)=>a.name.localeCompare(b.name),stock:(a,b)=>a.stock-b.stock,
+    estado:(a,b)=>({crit:0,low:1,ok:2}[st(a)]-{crit:0,low:1,ok:2}[st(b)]),tipo:(a,b)=>a.type.localeCompare(b.type)||S.order.indexOf(a.id)-S.order.indexOf(b.id)};
+  return arr.sort(f[S.sort]);
+}
+function vStock(){
+  return `
+  <div class="flex flex-wrap gap-2 items-center mb-4">
+    ${['todos','producto','insumo'].map(f=>`<button onclick="S.filter='${f}';render()" class="chip ${S.filter===f?'on':''}">${{todos:'Todos',producto:'Productos de venta',insumo:'Insumos de embalaje'}[f]}</button>`).join('')}
+    <div class="flex gap-2 w-full sm:w-auto sm:ml-auto">
+      <select class="inp !w-auto text-sm" onchange="S.sort=this.value;render()">
+        ${[['custom','↕️ Mi orden'],['name','Nombre A-Z'],['stock','Menor stock primero'],['estado','Críticos primero'],['tipo','Por tipo']].map(([k,l])=>`<option value="${k}" ${S.sort===k?'selected':''}>${l}</option>`).join('')}
+      </select>
+      <input class="inp sm:!w-56" placeholder="🔍 Buscar..." value="${esc(S.q)}" oninput="S.q=this.value;document.getElementById('tb').innerHTML=stockRows()">
+    </div>
+  </div>
+  ${S.sort==='custom'?'<p class="text-xs muted mb-2">Modo "Mi orden": usá las flechas ▲▼ para acomodar los artículos como quieras. El orden queda guardado.</p>':''}
+  <div class="card overflow-x-auto">
+    <table class="w-full text-sm min-w-[760px]">
+      <thead class="muted text-left"><tr class="border-b border-[var(--border)]">${S.sort==='custom'?'<th class="pl-3 w-14">Orden</th>':''}<th class="p-3">Artículo</th><th>Stock</th><th>Nivel</th><th>Estado</th><th>Mín / Crít</th><th>Proveedor</th><th class="text-right p-3">Ajuste</th></tr></thead>
+      <tbody id="tb">${stockRows()}</tbody>
+    </table>
+  </div>
+  <p class="text-xs muted mt-3">💡 Tocá los valores de mínimo/crítico para editarlos. Rollos (cinta, film, burbujas): se descuenta 1 cuando se termina.</p>`;
+}
+function stockRows(){
+  const q=S.q.toLowerCase();
+  return sortedItems().filter(i=>(S.filter==='todos'||i.type===S.filter)&&i.name.toLowerCase().includes(q)).map(i=>{
+    const s=st(i);const pct=Math.min(100,i.stock/(i.min*2)*100);
+    return `<tr class="border-b border-[var(--border)] last:border-0">
+      ${S.sort==='custom'?`<td class="pl-3 whitespace-nowrap"><button class="btn2 !px-2 !py-0.5 text-xs" onclick="mv(${i.id},-1)">▲</button><button class="btn2 !px-2 !py-0.5 text-xs ml-1" onclick="mv(${i.id},1)">▼</button></td>`:''}
+      <td class="p-3"><div class="font-medium">${i.name}</div><div class="text-xs muted">${i.type==='insumo'?'🧰 Insumo':'🏷️ Producto'}</div></td>
+      <td class="font-bold whitespace-nowrap">${i.stock} <span class="font-normal muted">${i.unit}</span></td>
+      <td class="w-28 pr-3"><div class="h-2 rounded bg-[var(--border)]"><div class="h-2 rounded bar-${s}" style="width:${pct}%"></div></div></td>
+      <td>${badge(s)}</td>
+      <td><button class="underline decoration-dotted" onclick="editLim(${i.id})">${i.min} / ${i.crit}</button></td>
+      <td class="muted">${i.prov?esc(i.prov):'<span class="opacity-50">—</span>'}</td>
+      <td class="p-3 text-right whitespace-nowrap"><button class="btn2" onclick="quick(${i.id},-1)">−</button> <button class="btn2" onclick="quick(${i.id},1)">+</button></td></tr>`}).join('');
+}
+function mv(id,dir){const k=S.order.indexOf(id),j=k+dir;if(j<0||j>=S.order.length)return;[S.order[k],S.order[j]]=[S.order[j],S.order[k]];document.getElementById('tb').innerHTML=stockRows()}
+function quick(id,d){const i=byId(id);changeStock(i,d,'Ajuste manual');render();toast(`${i.name}: ${d>0?'+':''}${d}`)}
+function editLim(id){const i=byId(id);const m=prompt(`Stock MÍNIMO (aviso "bajo") para ${i.name}:`,i.min);if(m===null)return;const c=prompt(`Stock CRÍTICO para ${i.name}:`,i.crit);if(c===null)return;i.min=+m;i.crit=+c;render();toast('Límites actualizados')}
+
+/* ---------- DESPACHO ---------- */
+function vDespacho(){
+  const prods=S.items.filter(i=>i.type==='producto');
+  const cajas=S.items.filter(i=>i.name.startsWith('Caja'));
+  const rollos=S.items.filter(i=>i.unit==='rollos');
+  S.dCanal=S.dCanal||'Local';
+  return `
+  <div class="grid lg:grid-cols-3 gap-4">
+  <div class="card p-5 lg:col-span-2 space-y-5">
+    <div><h2 class="font-semibold text-lg">Nuevo despacho #${nextDisp}</h2><p class="text-sm muted">Reemplaza la planilla de papel. Descuenta productos e insumos automáticamente.</p></div>
+    <div>
+      <div class="text-sm font-medium mb-2">Canal de venta</div>
+      <div class="flex flex-wrap gap-2">${CANALES.map(c=>`<button class="chip ${S.dCanal===c?'on':''}" onclick="S.dCanal='${c}';render()">${CIC[c]} ${c}</button>`).join('')}</div>
+    </div>
+    ${S.dCanal==='Revendedor'?`<div class="rounded-xl border border-[var(--border)] p-3 bg-[var(--background)]">
+      <div class="text-sm font-medium mb-2">¿Cómo sale el pedido del revendedor?</div>
+      <div class="flex flex-wrap gap-2">${ENVIOS.map((e,k)=>`<label class="chip cursor-pointer flex items-center gap-2"><input type="radio" name="envio" value="${e}" ${k===0?'checked':''}>${{0:'🚌',1:'📦',2:'🏪'}[k]} ${e}</label>`).join('')}</div>
+    </div>`:''}
+    <label class="text-sm block">Cliente / referencia <span class="muted">(opcional)</span><input id="dCli" class="inp mt-1" placeholder="${S.dCanal==='Revendedor'?'Ej: Carlos (San Rafael)':S.dCanal==='Mercado Libre'?'Ej: #ML-2231':'Ej: Juan Pérez'}"></label>
+    <div>
+      <div class="text-sm font-medium mb-2">🏷️ Productos</div>
+      <div class="flex gap-2"><select id="dProd" class="inp">${prods.map(p=>`<option value="${p.id}">${p.name} (${p.stock} disp.)</option>`).join('')}</select>
+      <input id="dQty" type="number" min="1" value="1" class="inp !w-20"><button class="btn" onclick="addLine()">Agregar</button></div>
+      <div id="lines" class="mt-3 space-y-2">${linesHtml()}</div>
+    </div>
+    <div>
+      <div class="text-sm font-medium mb-2">📦 Cajas usadas</div>
+      <div class="grid grid-cols-3 gap-2">${cajas.map(c=>`<label class="text-sm">${c.name.replace('Caja ','')}<input type="number" min="0" value="0" data-caja="${c.id}" class="inp mt-1"></label>`).join('')}</div>
+    </div>
+    <div>
+      <div class="text-sm font-medium mb-2">🧻 ¿Se terminó algún rollo?</div>
+      <div class="flex flex-wrap gap-2">${rollos.map(r=>`<label class="chip flex items-center gap-2 cursor-pointer"><input type="checkbox" data-rollo="${r.id}">${r.name}</label>`).join('')}</div>
+    </div>
+    <button class="btn w-full py-3" onclick="saveDisp()">✅ Registrar despacho</button>
+  </div>
+  <div class="card p-5"><h2 class="font-semibold mb-3">Despachos recientes</h2>
+    ${S.dispatches.slice(0,8).map(d=>`<div class="flex justify-between py-2 border-b border-[var(--border)] last:border-0 text-sm gap-2"><span><b>#${d.n}</b> · ${CIC[d.canal]} ${d.canal}${d.envio?`<span class="muted"> · ${d.envio}</span>`:''}</span><span class="muted whitespace-nowrap">${fmtT(d.t)}</span></div>`).join('')}
+  </div></div>`;
+}
+const linesHtml=()=>S.lines.length?S.lines.map((l,k)=>`<div class="flex justify-between items-center bg-[var(--background)] rounded-xl px-3 py-2 text-sm"><span>${l[0]} × <b>${l[1]}</b></span><button class="muted" onclick="S.lines.splice(${k},1);document.getElementById('lines').innerHTML=linesHtml()">✕</button></div>`).join(''):'<p class="text-sm muted">Todavía no agregaste productos.</p>';
+function addLine(){const it=byId(document.getElementById('dProd').value);const q=+document.getElementById('dQty').value||1;S.lines.push([it.name,q]);document.getElementById('lines').innerHTML=linesHtml()}
+function saveDisp(){
+  const items=S.lines.slice();
+  document.querySelectorAll('[data-caja]').forEach(e=>{const q=+e.value;if(q>0)items.push([byId(e.dataset.caja).name,q])});
+  document.querySelectorAll('[data-rollo]:checked').forEach(e=>items.push([byId(e.dataset.rollo).name,1]));
+  if(!items.length)return toast('⚠️ Agregá al menos un producto o insumo');
+  const env=document.querySelector('[name=envio]:checked');
+  registerDispatch({canal:S.dCanal,envio:S.dCanal==='Revendedor'&&env?env.value:'',cli:document.getElementById('dCli').value,items});
+  S.lines=[];render();toast('✅ Despacho registrado y stock actualizado');
+}
+
+/* ---------- PLANILLA (FOTO + IA) ---------- */
+const SAMPLE=[
+  {canal:'Mercado Libre',envio:'',cli:'#ML-2240',prod:'Estuche Fernetero Doble',q:1,caja:'Caja chica',conf:'alta'},
+  {canal:'Revendedor',envio:'Terminal de ómnibus',cli:'Carlos',prod:'Estuche Asador',q:4,caja:'Caja grande',conf:'alta'},
+  {canal:'Revendedor',envio:'Terminal de ómnibus',cli:'Carlos',prod:'Estuche para copas',q:2,caja:'',conf:'alta'},
+  {canal:'Tienda Nube',envio:'',cli:'#TN-512',prod:'Estuche Familiar (4 Personas)',q:1,caja:'Caja mediana',conf:'media',nota:'"Familiar 4" – letra poco clara'},
+  {canal:'Local',envio:'',cli:'',prod:'Tabla de Algarrobo Artesanal con Manijas',q:2,caja:'',conf:'baja',nota:'Cantidad dudosa: ¿2 o 7?'},
+];
+function vPlanilla(){
+  const prods=S.items.filter(i=>i.type==='producto');const cajas=S.items.filter(i=>i.name.startsWith('Caja'));
+  const steps=['Sacá la foto','La IA la lee','Revisás y confirmás'];
+  const head=`<div class="flex gap-2 mb-5">${steps.map((s,k)=>`<div class="flex-1 text-center text-xs sm:text-sm py-2 rounded-xl ${S.photoStep>=k?'bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold':'border border-[var(--border)] muted'}">${k+1}. ${s}</div>`).join('')}</div>`;
+  let body='';
+  if(S.photoStep===0){
+    body=`<div class="card p-6 text-center space-y-4">
+      ${S.photo?`<img src="${S.photo}" class="max-h-72 mx-auto rounded-xl border border-[var(--border)]">`:`<div class="text-5xl">📸</div><div class="font-semibold">Subí la foto de la planilla del día</div><p class="text-sm muted">Desde el celular abre la cámara directamente. Podés subir varias hojas.</p>`}
+      <label class="btn inline-block cursor-pointer">${S.photo?'Cambiar foto':'📷 Sacar / elegir foto'}<input type="file" accept="image/*" capture="environment" class="hidden" onchange="loadPhoto(this)"></label>
+      <div class="flex flex-col sm:flex-row gap-2 justify-center">
+        ${S.photo?'<button class="btn" onclick="analyze()">🤖 Analizar planilla</button>':''}
+        <button class="btn2" onclick="analyze()">Probar con planilla de ejemplo</button>
+      </div>
+    </div>`;
+  }else if(S.photoStep===1){
+    body=`<div class="card p-10 text-center"><div class="text-4xl spin">⏳</div><div class="font-semibold mt-3">Leyendo la planilla...</div><p class="text-sm muted">Reconociendo productos, cantidades y canales</p></div>`;
+  }else{
+    const rev=S.photoRows.filter(r=>r.conf!=='alta').length;
+    body=`<div class="card p-5">
+      <div class="flex flex-wrap justify-between items-center gap-2 mb-3"><div><h2 class="font-semibold">Encontré ${S.photoRows.length} líneas en la planilla</h2>
+      <p class="text-sm muted">Nada se descuenta hasta que confirmes. ${rev?`<b class="text-yellow-600">⚠️ ${rev} línea(s) para revisar.</b>`:''}</p></div></div>
+      <div class="overflow-x-auto"><table class="w-full text-sm min-w-[860px]">
+      <thead class="muted text-left text-xs"><tr><th class="py-2"></th><th>Canal</th><th>Envío</th><th>Cliente</th><th>Producto</th><th>Cant.</th><th>Caja</th><th></th></tr></thead><tbody>
+      ${S.photoRows.map((r,k)=>`<tr class="border-t border-[var(--border)] ${r.conf==='baja'?'bg-red-500/10':r.conf==='media'?'bg-yellow-500/10':''}">
+        <td class="py-2 pr-1 text-center" title="Confianza ${r.conf}">${r.conf==='alta'?'✅':r.conf==='media'?'⚠️':'❗'}</td>
+        <td class="pr-1"><select class="inp text-xs" onchange="S.photoRows[${k}].canal=this.value;render()">${CANALES.map(c=>`<option ${c===r.canal?'selected':''}>${c}</option>`).join('')}</select></td>
+        <td class="pr-1">${r.canal==='Revendedor'?`<select class="inp text-xs" onchange="S.photoRows[${k}].envio=this.value">${ENVIOS.map(e=>`<option ${e===r.envio?'selected':''}>${e}</option>`).join('')}</select>`:'<span class="muted">—</span>'}</td>
+        <td class="pr-1"><input class="inp text-xs" value="${esc(r.cli)}" onchange="S.photoRows[${k}].cli=this.value"></td>
+        <td class="pr-1"><select class="inp text-xs" onchange="S.photoRows[${k}].prod=this.value">${prods.map(p=>`<option ${p.name===r.prod?'selected':''}>${p.name}</option>`).join('')}</select>${r.nota?`<div class="text-xs text-yellow-600 mt-0.5">${esc(r.nota)}</div>`:''}</td>
+        <td class="pr-1 w-16"><input type="number" min="1" class="inp text-xs" value="${r.q}" onchange="S.photoRows[${k}].q=+this.value"></td>
+        <td class="pr-1"><select class="inp text-xs" onchange="S.photoRows[${k}].caja=this.value"><option value="">Sin caja</option>${cajas.map(c=>`<option ${c.name===r.caja?'selected':''}>${c.name}</option>`).join('')}</select></td>
+        <td><button class="muted" onclick="S.photoRows.splice(${k},1);render()" title="Quitar">✕</button></td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="flex flex-col sm:flex-row gap-2 mt-4"><button class="btn flex-1 py-3" onclick="confirmPhoto()">✅ Confirmar y descontar stock</button><button class="btn2" onclick="S.photoStep=0;S.photo=null;render()">Descartar</button></div>
+    </div>`;
+  }
+  return `<div class="max-w-5xl">${head}${body}
+    <div class="card p-4 mt-4 text-sm"><b>💡 Consejo:</b> <span class="muted">la lectura es mucho más precisa con una <b>planilla impresa con columnas fijas</b> (Canal · Envío · Cliente · Producto · Cant. · Caja). La app puede generarla lista para imprimir.</span></div></div>`;
+}
+function loadPhoto(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{S.photo=e.target.result;render()};r.readAsDataURL(f)}
+function analyze(){S.photoStep=1;render();setTimeout(()=>{S.photoRows=SAMPLE.map(r=>({...r}));S.photoStep=2;render()},1600)}
+function confirmPhoto(){
+  const groups={};
+  S.photoRows.forEach(r=>{const key=r.canal+'|'+(r.canal==='Revendedor'?r.envio:'')+'|'+r.cli;(groups[key]=groups[key]||{canal:r.canal,envio:r.canal==='Revendedor'?r.envio:'',cli:r.cli,items:[],origen:'(desde foto)'});
+    groups[key].items.push([r.prod,r.q]);if(r.caja)groups[key].items.push([r.caja,1]);});
+  const g=Object.values(groups);g.forEach(registerDispatch);
+  S.photoStep=0;S.photo=null;S.photoRows=[];render();toast(`✅ ${g.length} despachos cargados desde la foto`);
+}
+
+/* ---------- INGRESO ---------- */
+function vIngreso(){
+  const provs=[...new Set(S.items.map(i=>i.prov).filter(Boolean))];
+  const pre=S.preIng;S.preIng=null;
+  return `<div class="max-w-xl card p-5 space-y-4">
+    <div><h2 class="font-semibold text-lg">Registrar ingreso</h2><p class="text-sm muted">Cuando llega mercadería o insumos al depósito.</p></div>
+    <label class="text-sm block">Artículo<select id="cItem" class="inp mt-1">${S.items.map(i=>`<option value="${i.id}" ${pre===i.id?'selected':''}>${i.type==='insumo'?'🧰':'🏷️'} ${i.name} (hay ${i.stock} ${i.unit})</option>`).join('')}</select></label>
+    <label class="text-sm block">Cantidad<input id="cQty" type="number" min="1" value="1" class="inp mt-1"></label>
+    <label class="text-sm block">Proveedor <span class="muted">(opcional — persona o empresa)</span>
+      <input id="cProv" list="provs" class="inp mt-1" placeholder="Ej: Embalajes Norte"><datalist id="provs">${provs.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></label>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="text-sm block">Precio unitario <span class="muted">(opcional)</span><input id="cPrice" class="inp mt-1" placeholder="$"></label>
+      <label class="text-sm block">Nota <span class="muted">(opcional)</span><input id="cNote" class="inp mt-1" placeholder="Factura, remito..."></label>
+    </div>
+    <button class="btn w-full py-3" onclick="saveIng()">📥 Sumar al stock</button>
+  </div>`;
+}
+function saveIng(){
+  const i=byId(document.getElementById('cItem').value);const q=+document.getElementById('cQty').value||0;const p=document.getElementById('cProv').value.trim();
+  if(q<=0)return toast('Cantidad inválida');if(p)i.prov=p;
+  changeStock(i,q,'Ingreso'+(p?' · '+p:''));render();toast(`📥 ${q} ${i.unit} de ${i.name}`);
+}
+
+/* ---------- AVISOS ---------- */
+function vAvisos(){
+  const ic={crit:'🛑',low:'⚠️',desp:'🚚',week:'📊'};const a=S.cfg.app,m=S.cfg.mail;
+  const tg=(grp,k,l,d,dis)=>`<div class="flex items-start justify-between gap-4 py-3 border-b border-[var(--border)] last:border-0 ${dis?'opacity-40 pointer-events-none':''}"><div><div class="font-medium text-sm">${l}</div><div class="text-xs muted">${d}</div></div><button class="tgl ${S.cfg[grp][k]?'on':''}" onclick="S.cfg.${grp}.${k}=!S.cfg.${grp}.${k};render()"></button></div>`;
+  return `<div class="grid xl:grid-cols-3 gap-4">
+  <div class="card p-5 xl:col-span-1">
+    <div class="flex justify-between items-center mb-3"><h2 class="font-semibold">Centro de avisos</h2><button class="text-sm text-[var(--primary)]" onclick="S.notifs.forEach(n=>n.read=true);render()">Marcar leído</button></div>
+    ${S.notifs.map(n=>`<div class="flex gap-3 py-3 border-b border-[var(--border)] last:border-0 ${n.read?'opacity-60':''}">
+      <div class="text-xl">${ic[n.type]}</div><div class="flex-1 min-w-0"><div class="text-sm ${n.read?'':'font-semibold'}">${esc(n.msg)}</div>
+      <div class="text-xs muted mt-0.5">${fmtT(n.t)}${n.mail?' · ✉️ Gmail enviado':''}</div></div>${n.read?'':'<span class="w-2 h-2 rounded-full bg-[var(--primary)] mt-2 shrink-0"></span>'}</div>`).join('')}
+  </div>
+  <div class="card p-5">
+    <div class="flex items-center gap-2 mb-1"><span class="text-xl">📱</span><h2 class="font-semibold">Avisos en la app</h2></div>
+    <p class="text-xs muted mb-2">Campanita y centro de avisos. Se ven en la notebook y en el celular.</p>
+    ${tg('app','on','Activar avisos en la app','Interruptor general')}
+    ${tg('app','desp','Al cargar un despacho','Detalle de lo que se descontó',!a.on)}
+    ${tg('app','photo','Al cargar una planilla por foto','Resumen de lo leído',!a.on)}
+    ${tg('app','low','Stock BAJO','Cuando llega al mínimo',!a.on)}
+    ${tg('app','crit','Stock CRÍTICO','Prioridad alta',!a.on)}
+  </div>
+  <div class="card p-5">
+    <div class="flex items-center gap-2 mb-1"><span class="text-xl">✉️</span><h2 class="font-semibold">Avisos por Gmail</h2></div>
+    <p class="text-xs muted mb-2">Se envían desde la cuenta Gmail del negocio.</p>
+    ${tg('mail','on','Activar envío por Gmail','Interruptor general')}
+    <div class="${m.on?'':'opacity-40 pointer-events-none'}">
+      <label class="text-xs muted block py-2">Cuenta que envía<input class="inp mt-1 text-sm" value="${esc(m.from)}" onchange="S.cfg.mail.from=this.value"></label>
+      ${tg('mail','desp','Cada despacho','Puede ser mucho mail: apagado por defecto')}
+      ${tg('mail','low','Stock BAJO','')}
+      ${tg('mail','crit','Stock CRÍTICO','')}
+      ${tg('mail','week','Resumen semanal','Stock, faltantes, pedidos por canal y consumo de insumos')}
+      ${m.week?`<div class="grid grid-cols-2 gap-2 py-2">
+        <label class="text-xs muted">Día<select class="inp mt-1 text-sm" onchange="S.cfg.mail.day=this.value">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].map(d=>`<option ${d===m.day?'selected':''}>${d}</option>`).join('')}</select></label>
+        <label class="text-xs muted">Hora<input type="time" class="inp mt-1 text-sm" value="${m.hour}" onchange="S.cfg.mail.hour=this.value"></label></div>`:''}
+      <div class="py-3">
+        <div class="font-medium text-sm mb-2">Destinatarios</div>
+        <div class="flex flex-wrap gap-2 mb-2">${m.emails.map((e,k)=>`<span class="btn2 text-xs">${esc(e)} <button onclick="S.cfg.mail.emails.splice(${k},1);render()">✕</button></span>`).join('')}</div>
+        <div class="flex gap-2"><input id="newMail" class="inp text-sm" placeholder="agregar@gmail.com"><button class="btn2" onclick="const v=document.getElementById('newMail').value.trim();if(v){S.cfg.mail.emails.push(v);render()}">Agregar</button></div>
+      </div>
+      <button class="btn w-full" onclick="testWeekly()">📊 Enviar resumen de prueba</button>
+    </div>
+  </div></div>`;
+}
+function testWeekly(){const f=S.items.filter(i=>st(i)!=='ok').map(i=>i.name);S.notifs.unshift({t:now(),type:'week',msg:`Resumen semanal: ${S.dispatches.length} despachos · faltantes: ${f.join(', ')||'ninguno'}. Enviado a ${S.cfg.mail.emails.length} destinatario(s).`,read:false,mail:true});render();toast('📊 Resumen enviado (simulado)')}
+
+/* ---------- ASISTENTE ---------- */
+function vChat(){
+  const sug=['¿Qué falta comprar?','¿Cuántos estuches hay?','¿Cuánto film negro queda?','¿Quién nos vende la cinta?','¿Cuántos despachos hubo esta semana?','Mostrame los insumos'];
+  return `<div class="card max-w-3xl mx-auto flex flex-col" style="height:min(640px,calc(100dvh - 210px))">
+    <div class="p-4 border-b border-[var(--border)] flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] grid place-items-center">🤖</div><div><div class="font-semibold">Asistente de stock</div><div class="text-xs muted">Lee la base de datos en tiempo real</div></div></div>
+    <div id="msgs" class="flex-1 overflow-y-auto p-4 space-y-3">${S.chat.map(m=>`<div class="flex ${m.from==='me'?'justify-end':''}"><div class="max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-line ${m.from==='me'?'bg-[var(--primary)] text-[var(--primary-foreground)]':'bg-[var(--background)] border border-[var(--border)]'}">${esc(m.text)}</div></div>`).join('')}</div>
+    <div class="px-4 pt-2 flex gap-2 overflow-x-auto">${sug.map(s=>`<button class="btn2 text-xs whitespace-nowrap" onclick="ask('${s}')">${s}</button>`).join('')}</div>
+    <form class="p-4 flex gap-2" onsubmit="event.preventDefault();const i=document.getElementById('q');if(i.value.trim())ask(i.value);">
+      <input id="q" class="inp" placeholder="Preguntá algo sobre el stock..." autocomplete="off"><button class="btn">Enviar</button></form>
+  </div>`;
+}
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[¿?¡!.,()]/g,' ');
+const stem=w=>w.replace(/(es|s)$/,'');
+const STOP=['embalaje','personas','artesanal','manijas'];
+function matchItems(n){
+  let best=0,res=[];
+  S.items.forEach(i=>{const sc=norm(i.name).split(/\s+/).filter(w=>w.length>=4&&!STOP.includes(w)).reduce((a,w)=>a+(n.includes(stem(w))?1:0),0);
+    if(sc>best){best=sc;res=[i]}else if(sc===best&&sc>0)res.push(i)});
+  return res;
+}
+const line=i=>`• ${i.name}: ${i.stock} ${i.unit} (${stLabel[st(i)]})`;
+function answer(q){
+  const n=norm(q);const its=matchItems(n);
+  if(/proveedor|quien.*(vende|compra)|compramos|a quien/.test(n)){
+    if(its.length)return its.map(i=>`• ${i.name}: ${i.prov||'sin proveedor cargado'}`).join('\n');
+    return 'Proveedores cargados:\n'+S.items.filter(i=>i.prov).map(i=>`• ${i.name} → ${i.prov}`).join('\n');
+  }
+  if(/despacho|pedido|envio|vend/.test(n)){
+    const h=/semana/.test(n)?7:1;const d=S.dispatches.filter(x=>Date.now()-x.t<h*86400000);
+    return `${h===1?'Hoy':'Esta semana'} hubo ${d.length} despacho(s):\n`+CANALES.map(c=>[c,d.filter(x=>x.canal===c).length]).filter(x=>x[1]).map(([c,k])=>`• ${c}: ${k}`).join('\n');
+  }
+  if(its.length&&!/falta|reponer/.test(n)){
+    if(its.length===1){const i=its[0];return `Hay ${i.stock} ${i.unit} de ${i.name}. Estado: ${stLabel[st(i)]} (mínimo ${i.min}, crítico ${i.crit}).`+(st(i)!=='ok'?`\n⚠️ Conviene reponer${i.prov?' — proveedor: '+i.prov:''}.`:'');}
+    return 'Encontré varios:\n'+its.map(line).join('\n')+`\nTotal: ${its.reduce((a,i)=>a+i.stock,0)}`;
+  }
+  if(/critic/.test(n)){const c=S.items.filter(i=>st(i)==='crit');return c.length?'En nivel crítico:\n'+c.map(line).join('\n'):'No hay nada en nivel crítico ✅';}
+  if(/falta|bajo|poco|reponer|comprar|acaba/.test(n)){const l=S.items.filter(i=>st(i)!=='ok');return l.length?'Hay que reponer:\n'+l.map(i=>line(i)+(i.prov?` → ${i.prov}`:'')).join('\n'):'No falta nada ✅';}
+  if(/insumo/.test(n))return 'Insumos de embalaje:\n'+S.items.filter(i=>i.type==='insumo').map(line).join('\n');
+  if(/producto/.test(n))return 'Productos de venta:\n'+S.items.filter(i=>i.type==='producto').map(line).join('\n');
+  if(/todo|stock|inventario|hay/.test(n))return 'Stock completo:\n'+S.items.map(line).join('\n');
+  return 'No encontré ese artículo 🤔 Probá con: "¿cuántos estuches hay?", "¿qué falta comprar?", "mostrame los insumos".';
+}
+function ask(q){S.chat.push({from:'me',text:q});S.chat.push({from:'bot',text:answer(q)});render();const m=document.getElementById('msgs');m.scrollTop=m.scrollHeight;document.getElementById('q').focus()}
+
+/* ---------- RENDER ---------- */
+function render(){
+  renderNav();
+  document.getElementById('content').innerHTML={panel:vPanel,stock:vStock,despacho:vDespacho,planilla:vPlanilla,ingreso:vIngreso,avisos:vAvisos,chat:vChat}[S.view]();
+}
+render();
+</script>
+</body>
+</html>
